@@ -6,11 +6,13 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
+    "@fontsource/noto-sans-kr": "^5.3.0",
+    "@fontsource/noto-serif-kr": "^5.3.0",
     "@remotion/cli": "4.0.506",
+    "@remotion/tailwind-v4": "4.0.506",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "remotion": "4.0.506",
-    "@remotion/tailwind-v4": "4.0.506",
     "tailwindcss": "4.0.0"
   },
   "devDependencies": {
