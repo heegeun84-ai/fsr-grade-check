@@ -117,6 +117,57 @@ body {
   letter-spacing: .06em; }
 .trk small { font-family: var(--fk); font-weight: 400; font-size: 12px;
   color: var(--ink-3); letter-spacing: 0; }
+/* PB2 연도별 입력 블록 */
+.vint { padding: 12px 18px 2px; }
+.vint + .vint { border-top: 1px solid var(--edge); margin-top: 10px; padding-top: 14px; }
+.vint .vh { display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px; }
+.vint .vh b { font-family: var(--fd); font-weight: 700; font-size: 15px; }
+.vint .vh span { font-size: 12px; color: var(--ink-3); }
+.vint label { display: block; font-size: 12.5px; color: var(--ink-2); margin-bottom: 5px; }
+.vint input { font-family: var(--fd); font-weight: 700; font-size: 17px; width: 100%;
+  padding: 9px 12px; background: var(--bg); color: var(--ink);
+  border: 1px solid var(--edge-2); border-radius: 9px; text-align: right;
+  font-variant-numeric: tabular-nums; }
+.vint input:focus-visible { outline: 2px solid var(--pb2); outline-offset: 1px; }
+.vint input::placeholder { color: var(--ink-3); font-weight: 400; font-size: 13.5px; }
+.vint .vcalc { font-size: 13px; color: var(--ink-2); margin-top: 8px;
+  font-variant-numeric: tabular-nums; }
+.vint .vcalc b { font-family: var(--fd); color: var(--pb2); font-size: 14.5px; }
+
+/* 매년 1월 지급 타임라인 */
+.jansec { margin-top: 18px; }
+.jhead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  margin: 6px 2px 12px; }
+.jhead h2 { font-family: var(--fd); font-weight: 700; font-size: 21px; margin: 0;
+  color: var(--pb2); }
+.jhead span { font-size: 13px; color: var(--ink-3); }
+.jans { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }
+@media (max-width: 1000px) { .jans { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .jans { grid-template-columns: 1fr; } }
+.jan { background: var(--panel); border: 1px solid var(--edge); border-radius: 14px;
+  padding: 16px 17px 14px; box-shadow: 0 1px 2px rgba(0,0,0,.4),
+  inset 0 1px 0 rgba(255,255,255,.05); }
+.jan.next { border-color: var(--pb2);
+  box-shadow: 0 0 0 1px var(--pb2), 0 8px 28px rgba(232,181,62,.13); }
+.jan .jy { display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; }
+.jan .jy b { font-family: var(--fd); font-weight: 700; font-size: 16px; }
+.jan .jy span { font-family: var(--fd); font-weight: 700; font-size: 10.5px;
+  letter-spacing: .08em; color: var(--ink-3); }
+.jan.next .jy span { color: var(--pb2); }
+.jan .jv { font-family: var(--fd); font-weight: 700; font-size: 25px;
+  letter-spacing: -.01em; margin: 7px 0 9px; color: var(--pb2);
+  font-variant-numeric: tabular-nums; }
+.jan .jv.zero { color: var(--ink-3); }
+.jan .jb { display: grid; gap: 3px; border-top: 1px solid var(--edge);
+  padding-top: 9px; }
+.jan .jb .r { display: flex; justify-content: space-between; gap: 10px;
+  font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.jan .jb .r b { font-family: var(--fd); color: var(--ink); font-weight: 700; }
+.jan .jb .miss { font-size: 12px; color: var(--ink-3); }
+.jnote { margin: 12px 2px 0; font-size: 12.5px; color: var(--ink-3); }
+
 .foot-note { padding: 0 18px 16px; font-size: 12.5px; color: var(--ink-3);
   line-height: 1.65; }
 
@@ -217,31 +268,31 @@ details.std > summary:hover { color: var(--ink-2); }
     <!-- ==================== PB2 ==================== -->
     <div class="card" style="color:var(--pb2)">
       <div class="strip" style="background:var(--pb2)"></div>
-      <div class="hd"><b style="color:var(--pb2)">PB2</b><span>환산성적 (제외 항목 반영)</span></div>
-      <div class="inrow">
-        <div class="in2">
-          <div>
-            <label for="inPb2T">목표</label>
-            <input type="text" inputmode="numeric" autocomplete="off" id="inPb2T" placeholder="0" style="color:var(--ink)">
-          </div>
-          <div>
-            <label for="inPb2">현재 실적</label>
-            <input type="text" inputmode="numeric" autocomplete="off" id="inPb2" placeholder="0" style="color:var(--ink)">
-          </div>
-        </div>
-        <div class="hint" id="pb2Echo">—</div>
-      </div>
+      <div class="hd"><b style="color:var(--pb2)">PB2</b><span>연도별 유지 SC × PB1 횟수로 책정</span></div>
+      <div id="pb2Vints"></div>
       <div class="now">
         <div>
-          <div class="k">달성률</div>
-          <div class="v" id="pb2Pct" style="color:var(--pb2)">—</div>
+          <div class="k">3개년 총 책정액 <span class="s">(감액 전)</span></div>
+          <div class="v" id="pb2Total" style="color:var(--pb2)">—</div>
         </div>
       </div>
-      <div class="rows" id="pb2Rows"></div>
-      <div class="foot-note">환산성적에서 빠지는 항목이 있으므로, 회사 전산의
-        PB2 인정 기준 수치를 그대로 입력하세요.</div>
+      <div class="foot-note">유지 SC는 반송·철회 제외, 2회 연체 제외 기준.
+        유지SC 100·150백만 이상 시 6·9회 보장, 300백만 이상 시 +3회 합산은
+        <b>자동 반영</b>됩니다. 전문직 1.5배·FSR 소개 가산은 횟수에 직접
+        반영해 입력하세요.</div>
     </div>
 
+  </div>
+
+  <!-- ==================== 매년 1월 지급 ==================== -->
+  <div class="jansec">
+    <div class="jhead">
+      <h2>매년 1월, 받게 될 PB2</h2>
+      <span>책정연도별 +13차월 20% → +25차월 30% → +37차월 50% 분할 지급</span>
+    </div>
+    <div class="jans" id="jans"></div>
+    <p class="jnote">지급 시점 유지SC가 책정 구간보다 낮아지면 일정액 × SC 유지율로
+      감액될 수 있습니다 (위 금액은 감액 전 기준).</p>
   </div>
 
   <!-- ==================== 기준값 수정 ==================== -->
@@ -270,8 +321,8 @@ details.std > summary:hover { color: var(--ink-2); }
   </details>
 
   <p class="page-foot">입력값은 이 브라우저에 자동 저장됩니다 · 서버 전송 없음<br>
-    MPC 기준은 2026 업적 달성기준 표, MDRT 기준은 회사 전산 달성 Grade 표
-    (NSC·AGI, 천원 단위 절사)입니다.</p>
+    MPC 기준은 2026 업적 달성기준 표, MDRT 기준은 회사 전산 달성 Grade 표(NSC·AGI),
+    PB2는 지급 기준 문서(2024.1 신계약부터 적용)의 일정액·가감률·차월별 지급률 표를 따릅니다.</p>
 </div>
 
 <script>
@@ -287,9 +338,21 @@ const DEF_GRADES = [
   { name:"Silver",        min:100*M },
   { name:"Bronze",        min:70*M }
 ];
+/* PB2 지급 기준 — 일정액(유지SC 구간, 백만) · 가감률(PB1 횟수) · 차월별 지급률 */
+const PB2_AMT  = [[200,80],[150,60],[100,35],[70,25],[50,17.5],[30,10.5],[20,7]];
+const PB2_RATE = [[12,200],[9,150],[6,100],[3,50]];
+const PB2_PAY  = [[2,20],[3,30],[4,50]];   // [실적연도+n년 1월, 지급률%]
+const VINTS = [
+  { y:2024, note:"2025.1 책정 · 지급 중" },
+  { y:2025, note:"2026.1 책정" },
+  { y:2026, note:"진행 중 · 2027.1 책정" }
+];
+
 /* 회사 전산 달성 Grade 표 (천원 단위 절사 → 원 환산) */
 const DEFAULTS = () => ({
-  mpc: null, nsc: null, agi: null, pb2: null, pb2T: null,
+  mpc: null, nsc: null, agi: null,
+  sc2024: null, cnt2024: null, sc2025: null, cnt2025: null,
+  sc2026: null, cnt2026: null,
   grades: DEF_GRADES.map(g => ({ ...g })),
   retMin: 89,
   nscM: 75194000,  nscC: 225581000, nscT: 451163000,
@@ -301,7 +364,8 @@ function load() {
   try {
     const raw = localStorage.getItem(KEY); if (!raw) return DEFAULTS();
     const d = DEFAULTS(), p = JSON.parse(raw);
-    for (const k of ["mpc","nsc","agi","pb2","pb2T","retMin",
+    for (const k of ["mpc","nsc","agi","retMin",
+                     "sc2024","cnt2024","sc2025","cnt2025","sc2026","cnt2026",
                      "nscM","nscC","nscT","agiM","agiC","agiT"])
       if (p[k] !== undefined) d[k] = p[k];
     if (Array.isArray(p.grades) && p.grades.length) d.grades = p.grades;
@@ -348,6 +412,32 @@ const pc = p => !Number.isFinite(p) ? "—"
 /* ============================================================
    렌더
    ============================================================ */
+function pb2Base(sc) {
+  for (const [t, a] of PB2_AMT) if (sc >= t * M) return a * M;
+  return 0;
+}
+function pb2Eff(sc, raw) {
+  let e = raw; const steps = [];
+  if (sc >= 100 * M && sc < 150 * M && e < 6) { e = 6; steps.push("6회 보장"); }
+  if (sc >= 150 * M && e < 9) { e = 9; steps.push("9회 보장"); }
+  if (sc >= 300 * M) { e += 3; steps.push("+3회 합산"); }
+  return { e, steps };
+}
+function pb2Rate(cnt) {
+  for (const [t, r] of PB2_RATE) if (cnt >= t) return r;
+  return 0;
+}
+function pb2Vintages() {
+  return VINTS.map(v => {
+    const sc = n(S["sc" + v.y]), raw = n(S["cnt" + v.y]);
+    const base = pb2Base(sc);
+    const { e, steps } = pb2Eff(sc, raw);
+    const rate = pb2Rate(e);
+    return { ...v, sc, raw, eff: e, steps, base, rate,
+             total: base * rate / 100 };
+  });
+}
+
 function rowHTML(name, std, cur, color, isNext) {
   const hit = cur >= std && std > 0;
   const p = std > 0 ? Math.min(100, cur/std*100) : 0;
@@ -420,16 +510,50 @@ function render() {
       L2.map(l => rowHTML(l[0], l[1], t.cur, "var(--mdrt)", l[1] === nx)).join("");
   }).join("");
 
-  /* --- PB2 --- */
-  const p2 = n(S.pb2), p2T = n(S.pb2T);
-  document.getElementById("pb2Echo").textContent =
-    p2 > 0 || p2T > 0 ? "목표 "+won(p2T)+" · 현재 "+won(p2) : "목표와 실적을 입력하세요";
-  document.getElementById("pb2Pct").textContent =
-    p2T > 0 ? pc(p2/p2T*100) : "—";
-  document.getElementById("pb2Rows").innerHTML = p2T > 0
-    ? rowHTML("PB2 목표", p2T, p2, "var(--pb2)", p2 < p2T)
-    : `<div class="foot-note" style="padding:4px 10px 6px">목표 금액을 입력하면
-       남은 금액이 계산됩니다.</div>`;
+  /* --- PB2: 연도별 책정액 + 1월 지급 타임라인 --- */
+  const vts = pb2Vintages();
+  vts.forEach(v => {
+    const el = document.getElementById("vc" + v.y);
+    if (!el) return;
+    if (v.sc <= 0 && v.raw <= 0) { el.innerHTML = "유지 SC와 횟수를 입력하세요"; return; }
+    if (v.base <= 0) { el.innerHTML = "유지SC 2,000만원 미만 — 일정액 구간 밖"; return; }
+    if (v.rate <= 0) { el.innerHTML =
+      `일정액 ${won(v.base)} × <b style="color:var(--ink-3)">0%</b> — PB1 3회 미만`; return; }
+    el.innerHTML = `일정액 ${won(v.base)} × ${v.rate}%` +
+      (v.eff !== v.raw ? ` <span style="color:var(--ink-3)">(${v.raw}→${v.eff}회 · ${
+        v.steps.join(", ")})</span>` : "") +
+      ` = <b>${won(v.total)}</b>`;
+  });
+  const grand = vts.reduce((a, v) => a + v.total, 0);
+  const tEl = document.getElementById("pb2Total");
+  tEl.textContent = grand > 0 ? won(grand) : "—";
+  tEl.style.color = grand > 0 ? "var(--pb2)" : "var(--ink-3)";
+
+  /* 1월 타임라인 */
+  const pays = [];
+  vts.forEach(v => { if (v.total > 0)
+    PB2_PAY.forEach(([off, pct2]) => pays.push(
+      { jan: v.y + off, pct: pct2, y: v.y, amt: v.total * pct2 / 100 })); });
+  const janYears = [2026, 2027, 2028, 2029];
+  const nextJan = janYears.find(jy => new Date(jy, 1, 1) > today) || null;
+  document.getElementById("jans").innerHTML = janYears.map(jy => {
+    const items = pays.filter(p => p.jan === jy);
+    const sum = items.reduce((a, p) => a + p.amt, 0);
+    const paid = new Date(jy, 1, 1) <= today;
+    const isNext = jy === nextJan;
+    const badge = paid ? "지급 완료" : isNext ? "다음 지급" : "예정";
+    const rows = items.map(p =>
+      `<div class="r"><span>’${String(p.y).slice(2)}년분 ${p.pct}%</span><b>${
+        won(p.amt)}</b></div>`).join("");
+    const miss = jy === 2029
+      ? `<div class="miss">+ ’27년 실적분(20%)은 미책정</div>` : "";
+    return `<div class="jan${isNext ? " next" : ""}">
+      <div class="jy"><b>${jy}년 1월</b><span>${badge}</span></div>
+      <div class="jv${sum > 0 ? "" : " zero"}">${sum > 0 ? won(sum) : "—"}</div>
+      <div class="jb">${rows ||
+        `<div class="miss">해당 연도 실적을 입력하면 계산됩니다</div>`}${miss}</div>
+    </div>`;
+  }).join("");
 }
 
 /* ============================================================
@@ -464,8 +588,31 @@ function buildStd() {
 /* ============================================================
    바인딩
    ============================================================ */
-const MAIN_INPUTS = [["inMpc","mpc"],["inNsc","nsc"],["inAgi","agi"],
-                     ["inPb2","pb2"],["inPb2T","pb2T"]];
+const MAIN_INPUTS = [["inMpc","mpc"],["inNsc","nsc"],["inAgi","agi"]];
+
+/* PB2 연도별 입력 블록 생성 + 바인딩 */
+function buildPb2() {
+  document.getElementById("pb2Vints").innerHTML = VINTS.map(v => `
+    <div class="vint">
+      <div class="vh"><b>${v.y}년 실적</b><span>${v.note}</span></div>
+      <div class="in2">
+        <div><label for="sc${v.y}">유지 SC</label>
+          <input type="text" inputmode="numeric" autocomplete="off"
+            id="sc${v.y}" placeholder="0"></div>
+        <div><label for="cnt${v.y}">PB1 횟수</label>
+          <input type="text" inputmode="numeric" autocomplete="off"
+            id="cnt${v.y}" placeholder="0"></div>
+      </div>
+      <div class="vcalc" id="vc${v.y}">—</div>
+    </div>`).join("");
+  VINTS.forEach(v => {
+    for (const k of ["sc" + v.y, "cnt" + v.y]) {
+      const el = document.getElementById(k);
+      el.value = comma(S[k]);
+      el.addEventListener("input", () => { S[k] = commaize(el); save(); render(); });
+    }
+  });
+}
 for (const [id,k] of MAIN_INPUTS) {
   const el = document.getElementById(id);
   el.value = comma(S[k]);
@@ -479,9 +626,10 @@ document.getElementById("btnReset").addEventListener("click", () => {
   localStorage.removeItem(KEY); S = load();
   for (const [id,k] of MAIN_INPUTS)
     document.getElementById(id).value = comma(S[k]);
-  buildStd(); render();
+  buildPb2(); buildStd(); render();
 });
 
+buildPb2();
 buildStd();
 render();
 </script>
