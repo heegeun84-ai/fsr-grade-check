@@ -120,10 +120,16 @@ body {
 /* PB2 연도별 입력 블록 */
 .vint { padding: 12px 18px 2px; }
 .vint + .vint { border-top: 1px solid var(--edge); margin-top: 10px; padding-top: 14px; }
-.vint .vh { display: flex; align-items: baseline; justify-content: space-between;
+.vint .vh { display: flex; align-items: center; justify-content: space-between;
   gap: 8px; margin-bottom: 8px; }
-.vint .vh b { font-family: var(--fd); font-weight: 700; font-size: 15px; }
-.vint .vh span { font-size: 12px; color: var(--ink-3); }
+.vint .vh .ylab { display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--fd); font-weight: 700; font-size: 15px; }
+.vint .vh .yin { font-family: var(--fd); font-weight: 700; font-size: 16px;
+  width: 74px; padding: 5px 8px; background: var(--bg); color: var(--pb2);
+  border: 1px solid var(--edge-2); border-radius: 8px; text-align: center;
+  font-variant-numeric: tabular-nums; }
+.vint .vh .yin:focus-visible { outline: 2px solid var(--pb2); outline-offset: 1px; }
+.vint .vh span.vnote { font-size: 12px; color: var(--ink-3); text-align: right; }
 .vint label { display: block; font-size: 12.5px; color: var(--ink-2); margin-bottom: 5px; }
 .vint input { font-family: var(--fd); font-weight: 700; font-size: 17px; width: 100%;
   padding: 9px 12px; background: var(--bg); color: var(--ink);
@@ -272,14 +278,15 @@ details.std > summary:hover { color: var(--ink-2); }
       <div id="pb2Vints"></div>
       <div class="now">
         <div>
-          <div class="k">3개년 총 책정액 <span class="s">(감액 전)</span></div>
+          <div class="k">총 책정액 <span class="s">(감액 전)</span></div>
           <div class="v" id="pb2Total" style="color:var(--pb2)">—</div>
         </div>
       </div>
-      <div class="foot-note">유지 SC는 반송·철회 제외, 2회 연체 제외 기준.
-        유지SC 100·150백만 이상 시 6·9회 보장, 300백만 이상 시 +3회 합산은
-        <b>자동 반영</b>됩니다. 전문직 1.5배·FSR 소개 가산은 횟수에 직접
-        반영해 입력하세요.</div>
+      <div class="foot-note">연도 칸을 고치면 아래 1월 지급 일정도 함께
+        움직입니다. 올해·미래 연도는 <b>예상치</b>로 입력하세요 (2027년을 넣으면
+        2029년 1월 예상이 완성됩니다). 유지 SC는 반송·철회 제외, 2회 연체 제외
+        기준. 유지SC 100·150백만 보장(6·9회)과 300백만 합산(+3회)은 자동 반영 —
+        전문직 1.5배·FSR 소개 가산은 횟수에 직접 반영해 입력하세요.</div>
     </div>
 
   </div>
@@ -342,17 +349,12 @@ const DEF_GRADES = [
 const PB2_AMT  = [[200,80],[150,60],[100,35],[70,25],[50,17.5],[30,10.5],[20,7]];
 const PB2_RATE = [[12,200],[9,150],[6,100],[3,50]];
 const PB2_PAY  = [[2,20],[3,30],[4,50]];   // [실적연도+n년 1월, 지급률%]
-const VINTS = [
-  { y:2024, note:"2025.1 책정 · 지급 중" },
-  { y:2025, note:"2026.1 책정" },
-  { y:2026, note:"진행 중 · 2027.1 책정" }
-];
+const DEF_VINT_YEARS = [2024, 2025, 2026, 2027];
 
 /* 회사 전산 달성 Grade 표 (천원 단위 절사 → 원 환산) */
 const DEFAULTS = () => ({
   mpc: null, nsc: null, agi: null,
-  sc2024: null, cnt2024: null, sc2025: null, cnt2025: null,
-  sc2026: null, cnt2026: null,
+  vints: DEF_VINT_YEARS.map(y => ({ y, sc: null, cnt: null })),
   grades: DEF_GRADES.map(g => ({ ...g })),
   retMin: 89,
   nscM: 75194000,  nscC: 225581000, nscT: 451163000,
@@ -365,10 +367,20 @@ function load() {
     const raw = localStorage.getItem(KEY); if (!raw) return DEFAULTS();
     const d = DEFAULTS(), p = JSON.parse(raw);
     for (const k of ["mpc","nsc","agi","retMin",
-                     "sc2024","cnt2024","sc2025","cnt2025","sc2026","cnt2026",
                      "nscM","nscC","nscT","agiM","agiC","agiT"])
       if (p[k] !== undefined) d[k] = p[k];
     if (Array.isArray(p.grades) && p.grades.length) d.grades = p.grades;
+    if (Array.isArray(p.vints) && p.vints.length) {
+      d.vints = p.vints.slice(0, 8).map(v => ({
+        y: v && Number.isFinite(Number(v.y)) ? Number(v.y) : null,
+        sc: v ? v.sc ?? null : null, cnt: v ? v.cnt ?? null : null }));
+    } else {
+      /* 이전 버전(sc2024 형태) 데이터 이전 */
+      d.vints.forEach(v => {
+        if (p["sc" + v.y] !== undefined) v.sc = p["sc" + v.y];
+        if (p["cnt" + v.y] !== undefined) v.cnt = p["cnt" + v.y];
+      });
+    }
     return d;
   } catch (e) { return DEFAULTS(); }
 }
@@ -428,13 +440,15 @@ function pb2Rate(cnt) {
   return 0;
 }
 function pb2Vintages() {
-  return VINTS.map(v => {
-    const sc = n(S["sc" + v.y]), raw = n(S["cnt" + v.y]);
+  return S.vints.map((v, i) => {
+    const y = Number(v.y);
+    const ok = Number.isFinite(y) && y >= 2024 && y < 2100;
+    const sc = n(v.sc), raw = n(v.cnt);
     const base = pb2Base(sc);
     const { e, steps } = pb2Eff(sc, raw);
     const rate = pb2Rate(e);
-    return { ...v, sc, raw, eff: e, steps, base, rate,
-             total: base * rate / 100 };
+    return { i, y: ok ? y : null, sc, raw, eff: e, steps, base, rate,
+             total: ok ? base * rate / 100 : 0 };
   });
 }
 
@@ -510,11 +524,19 @@ function render() {
       L2.map(l => rowHTML(l[0], l[1], t.cur, "var(--mdrt)", l[1] === nx)).join("");
   }).join("");
 
-  /* --- PB2: 연도별 책정액 + 1월 지급 타임라인 --- */
+  /* --- PB2: 연도별 책정액 + 1월 지급 타임라인 (연도 입력 연동) --- */
+  const nowY = today.getFullYear();
   const vts = pb2Vintages();
   vts.forEach(v => {
-    const el = document.getElementById("vc" + v.y);
+    const note = document.getElementById("vn" + v.i);
+    const el = document.getElementById("vvc" + v.i);
     if (!el) return;
+    if (v.y == null) {
+      if (note) note.textContent = "";
+      el.innerHTML = "연도(4자리)를 입력하세요"; return;
+    }
+    if (note) note.textContent = (v.y + 1) + ".1 책정" +
+      (v.y > nowY ? " · 예상" : v.y === nowY ? " · 진행 중" : "");
     if (v.sc <= 0 && v.raw <= 0) { el.innerHTML = "유지 SC와 횟수를 입력하세요"; return; }
     if (v.base <= 0) { el.innerHTML = "유지SC 2,000만원 미만 — 일정액 구간 밖"; return; }
     if (v.rate <= 0) { el.innerHTML =
@@ -529,31 +551,35 @@ function render() {
   tEl.textContent = grand > 0 ? won(grand) : "—";
   tEl.style.color = grand > 0 ? "var(--pb2)" : "var(--ink-3)";
 
-  /* 1월 타임라인 */
-  const pays = [];
-  vts.forEach(v => { if (v.total > 0)
-    PB2_PAY.forEach(([off, pct2]) => pays.push(
-      { jan: v.y + off, pct: pct2, y: v.y, amt: v.total * pct2 / 100 })); });
-  const janYears = [2026, 2027, 2028, 2029];
-  const nextJan = janYears.find(jy => new Date(jy, 1, 1) > today) || null;
-  document.getElementById("jans").innerHTML = janYears.map(jy => {
-    const items = pays.filter(p => p.jan === jy);
-    const sum = items.reduce((a, p) => a + p.amt, 0);
+  /* 1월 타임라인 — 입력된 연도에서 지급 연도를 도출 */
+  const valid = vts.filter(v => v.y != null);
+  const janYears = [...new Set(valid.flatMap(v =>
+    PB2_PAY.map(([off]) => v.y + off)))].sort((a, b) => a - b);
+  const nextJan = janYears.find(jy => new Date(jy, 1, 1) > today) ?? null;
+  document.getElementById("jans").innerHTML = janYears.length ? janYears.map(jy => {
+    const slots = [];
+    valid.forEach(v => PB2_PAY.forEach(([off, pct2]) => {
+      if (v.y + off === jy) slots.push({ v, pct: pct2, amt: v.total * pct2 / 100 });
+    }));
+    const sum = slots.reduce((a, p) => a + p.amt, 0);
     const paid = new Date(jy, 1, 1) <= today;
     const isNext = jy === nextJan;
     const badge = paid ? "지급 완료" : isNext ? "다음 지급" : "예정";
-    const rows = items.map(p =>
-      `<div class="r"><span>’${String(p.y).slice(2)}년분 ${p.pct}%</span><b>${
-        won(p.amt)}</b></div>`).join("");
-    const miss = jy === 2029
-      ? `<div class="miss">+ ’27년 실적분(20%)은 미책정</div>` : "";
+    const rows = slots.map(p => {
+      const est = p.v.y >= nowY ? " 예상" : "";
+      return p.v.total > 0
+        ? `<div class="r"><span>’${String(p.v.y).slice(2)}년분 ${p.pct}%${est}</span><b>${
+            won(p.amt)}</b></div>`
+        : `<div class="miss">’${String(p.v.y).slice(2)}년분 ${p.pct}% — 미입력</div>`;
+    }).join("");
     return `<div class="jan${isNext ? " next" : ""}">
       <div class="jy"><b>${jy}년 1월</b><span>${badge}</span></div>
       <div class="jv${sum > 0 ? "" : " zero"}">${sum > 0 ? won(sum) : "—"}</div>
-      <div class="jb">${rows ||
-        `<div class="miss">해당 연도 실적을 입력하면 계산됩니다</div>`}${miss}</div>
+      <div class="jb">${rows}</div>
     </div>`;
-  }).join("");
+  }).join("")
+  : `<div class="jnote" style="margin:0">PB2 카드에서 연도와 실적을 입력하면
+     지급 일정이 계산됩니다.</div>`;
 }
 
 /* ============================================================
@@ -590,27 +616,44 @@ function buildStd() {
    ============================================================ */
 const MAIN_INPUTS = [["inMpc","mpc"],["inNsc","nsc"],["inAgi","agi"]];
 
-/* PB2 연도별 입력 블록 생성 + 바인딩 */
+/* PB2 연도별 입력 블록 생성 + 바인딩 (연도도 입력값) */
 function buildPb2() {
-  document.getElementById("pb2Vints").innerHTML = VINTS.map(v => `
+  document.getElementById("pb2Vints").innerHTML = S.vints.map((v, i) => `
     <div class="vint">
-      <div class="vh"><b>${v.y}년 실적</b><span>${v.note}</span></div>
-      <div class="in2">
-        <div><label for="sc${v.y}">유지 SC</label>
-          <input type="text" inputmode="numeric" autocomplete="off"
-            id="sc${v.y}" placeholder="0"></div>
-        <div><label for="cnt${v.y}">PB1 횟수</label>
-          <input type="text" inputmode="numeric" autocomplete="off"
-            id="cnt${v.y}" placeholder="0"></div>
+      <div class="vh">
+        <span class="ylab">
+          <input type="text" inputmode="numeric" autocomplete="off" maxlength="4"
+            class="yin" id="vy${i}" placeholder="연도" aria-label="실적 연도"
+            value="${v.y ?? ""}">년 실적
+        </span>
+        <span class="vnote" id="vn${i}"></span>
       </div>
-      <div class="vcalc" id="vc${v.y}">—</div>
+      <div class="in2">
+        <div><label for="vsc${i}">유지 SC</label>
+          <input type="text" inputmode="numeric" autocomplete="off"
+            id="vsc${i}" placeholder="0"></div>
+        <div><label for="vcnt${i}">PB1 횟수</label>
+          <input type="text" inputmode="numeric" autocomplete="off"
+            id="vcnt${i}" placeholder="0"></div>
+      </div>
+      <div class="vcalc" id="vvc${i}">—</div>
     </div>`).join("");
-  VINTS.forEach(v => {
-    for (const k of ["sc" + v.y, "cnt" + v.y]) {
-      const el = document.getElementById(k);
-      el.value = comma(S[k]);
-      el.addEventListener("input", () => { S[k] = commaize(el); save(); render(); });
-    }
+  S.vints.forEach((v, i) => {
+    const yEl = document.getElementById("vy" + i);
+    yEl.addEventListener("input", () => {
+      const d = yEl.value.replace(/\D/g, "").slice(0, 4);
+      yEl.value = d;
+      S.vints[i].y = d.length === 4 ? Number(d) : null;
+      save(); render();
+    });
+    const scEl = document.getElementById("vsc" + i);
+    scEl.value = comma(v.sc);
+    scEl.addEventListener("input", () => {
+      S.vints[i].sc = commaize(scEl); save(); render(); });
+    const cEl = document.getElementById("vcnt" + i);
+    cEl.value = comma(v.cnt);
+    cEl.addEventListener("input", () => {
+      S.vints[i].cnt = commaize(cEl); save(); render(); });
   });
 }
 for (const [id,k] of MAIN_INPUTS) {
