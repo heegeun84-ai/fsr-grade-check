@@ -51,7 +51,11 @@ body {
         margin-bottom: 20px; }
 .head h1 { font-family: var(--fd); font-weight: 700; font-size: 27px; margin: 0;
            letter-spacing: -.01em; }
-.head .sub { font-size: 14px; color: var(--ink-3); margin-bottom: 2px; }
+.head .sub { font-size: 14px; color: var(--ink-2); margin-bottom: 2px; }
+.head .sub .dday { font-family: var(--fd); font-weight: 700; font-size: 17px;
+  color: var(--pb2); letter-spacing: .01em; }
+.hint .sumbig { font-family: var(--fd); font-weight: 700; font-size: 19px;
+  letter-spacing: -.01em; display: inline-block; margin-left: 4px; }
 .head .sp { flex: 1; }
 .head button { font: inherit; font-size: 13.5px; padding: 7px 13px; cursor: pointer;
   color: var(--ink-2); background: var(--panel); border: 1px solid var(--edge);
@@ -59,6 +63,14 @@ body {
 .head button:hover { color: var(--ink); background: var(--panel-2); }
 
 /* ---------- 카드 3장 ---------- */
+.rollnote { display: flex; align-items: flex-start; gap: 10px;
+  margin: 0 0 16px; padding: 12px 16px; border-radius: 12px;
+  border: 1px solid rgba(232,181,62,.45); background: rgba(232,181,62,.08);
+  font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+.rollnote b { color: var(--pb2); }
+.rollnote button { margin-left: auto; flex: none; background: none; border: none;
+  color: var(--ink-3); cursor: pointer; font-size: 17px; padding: 0 2px; }
+.rollnote button:hover { color: var(--ink); }
 .cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
 @media (max-width: 1000px) { .cards { grid-template-columns: 1fr; } }
 .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 16px;
@@ -220,11 +232,17 @@ details.std > summary:hover { color: var(--ink-2); }
 
   <div class="head">
     <div>
-      <h1>2026 MetLife FSR 실적 정산기</h1>
+      <h1><span id="hYear">2026</span> MetLife FSR 실적 정산기</h1>
       <div class="sub" id="headSub"></div>
     </div>
     <div class="sp"></div>
     <button id="btnReset" type="button">전체 지우기</button>
+  </div>
+
+  <div class="rollnote" id="rollNote" hidden>
+    <span>📅</span>
+    <span id="rollMsg"></span>
+    <button type="button" id="rollClose" aria-label="닫기">×</button>
   </div>
 
   <div class="cards">
@@ -385,6 +403,7 @@ const DEF_VINT_YEARS = [2024, 2025, 2026, 2027];
 
 /* 회사 전산 달성 Grade 표 (천원 단위 절사 → 원 환산) */
 const DEFAULTS = () => ({
+  stamp: null,
   mpc: null, mpcPrev: null, mpcCur: null,
   nsc: null, nscPrev: null, nscCur: null,
   agi: null, agiPrev: null, agiCur: null,
@@ -400,7 +419,7 @@ function load() {
   try {
     const raw = localStorage.getItem(KEY); if (!raw) return DEFAULTS();
     const d = DEFAULTS(), p = JSON.parse(raw);
-    for (const k of ["mpc","mpcPrev","mpcCur","nsc","nscPrev","nscCur",
+    for (const k of ["stamp","mpc","mpcPrev","mpcCur","nsc","nscPrev","nscCur",
                      "agi","agiPrev","agiCur","retMin",
                      "nscM","nscC","nscT","agiM","agiC","agiT"])
       if (p[k] !== undefined) d[k] = p[k];
@@ -421,6 +440,50 @@ function load() {
   } catch (e) { return DEFAULTS(); }
 }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} };
+
+/* ============================================================
+   월 전환 자동 이월 — 달이 바뀌면 미반영 월 입력값을 앞으로 민다
+   diff 1개월: 전산 += 전월마감, 전월마감 ← 당월현재, 당월현재 비움
+   diff 2개월↑: 전산 += 전월마감 + 당월현재, 두 칸 비움
+   ============================================================ */
+function rollover() {
+  const now = new Date();
+  const cur = now.getFullYear() * 12 + now.getMonth();
+  if (S.stamp == null || S.stamp > cur) {
+    S.stamp = cur; save(); return;
+  }
+  const diff = cur - S.stamp;
+  if (diff === 0) return;
+  let moved = 0;
+  const roll = (kb, kp, kc) => {
+    const b = n(S[kb]), p = n(S[kp]), c = n(S[kc]);
+    moved += p + (diff >= 2 ? c : 0);
+    if (diff === 1) {
+      S[kb] = b + p > 0 ? b + p : null;
+      S[kp] = c > 0 ? c : null;
+    } else {
+      S[kb] = b + p + c > 0 ? b + p + c : null;
+      S[kp] = null;
+    }
+    S[kc] = null;
+  };
+  roll("mpc", "mpcPrev", "mpcCur");
+  roll("nsc", "nscPrev", "nscCur");
+  roll("agi", "agiPrev", "agiCur");
+  S.stamp = cur; save();
+  if (moved > 0) {
+    const el = document.getElementById("rollNote");
+    document.getElementById("rollMsg").innerHTML =
+      `달이 바뀌어 미반영 월 입력값을 <b>자동 이월</b>했습니다` +
+      (diff === 1
+        ? " — 전월 마감분은 전산 확인 칸에 합산하고, 지난달 현재까지 실적은 마감 칸으로 옮겼습니다."
+        : " — 밀린 월 입력값을 모두 전산 확인 칸에 합산했습니다.") +
+      " 전산 조회값과 다르면 바로잡아 주세요.";
+    el.hidden = false;
+    document.getElementById("rollClose").addEventListener("click",
+      () => { el.hidden = true; });
+  }
+}
 
 /* 입력 중 쉼표 자동 표시 — 커서 위치 유지 */
 const comma = v => (v == null || v === "" ? "" : Number(v).toLocaleString("en-US"));
@@ -505,13 +568,15 @@ function rowHTML(name, std, cur, color, isNext) {
 
 function render() {
   const today = new Date();
-  const end = new Date(2026, 11, 31);
-  const days = Math.max(0, Math.ceil((end - today)/864e5));
-  const leftMo = today.getFullYear() > 2026 ? 0
-    : today.getFullYear() < 2026 ? 12 : 12 - today.getMonth();
-  document.getElementById("headSub").textContent =
+  const yy = today.getFullYear();
+  const end = new Date(yy, 11, 31);
+  const days = Math.max(0, Math.ceil((end - today) / 864e5));
+  const leftMo = 12 - today.getMonth();
+  document.getElementById("hYear").textContent = yy;
+  document.title = yy + " MetLife FSR 실적 정산기";
+  document.getElementById("headSub").innerHTML =
     today.toLocaleDateString("ko-KR") + " 기준 · 연말까지 " +
-    leftMo + "개월 (" + days + "일)";
+    `<b class="dday">D-${days}</b> · ${leftMo}개월`;
 
   /* --- 접속일 기준 전월·당월 라벨 --- */
   const prevM = new Date(today.getFullYear(), today.getMonth() - 1, 1).getMonth() + 1;
@@ -522,11 +587,12 @@ function render() {
   /* --- MPC: 전산 확인 + 전월 마감 + 당월 현재 합산 --- */
   const mpBase = n(S.mpc), mpPrev = n(S.mpcPrev), mpCur = n(S.mpcCur);
   const mp = mpBase + mpPrev + mpCur;
-  document.getElementById("mpcEcho").textContent =
+  document.getElementById("mpcEcho").innerHTML =
     mp <= 0 ? "포인트를 입력하세요"
     : (mpPrev > 0 || mpCur > 0)
-      ? `전산 ${won(mpBase)} + ${prevM}월 ${won(mpPrev)} + ${curM}월 ${won(mpCur)} = 합계 ${won(mp)}`
-      : won(mp);
+      ? `전산 ${won(mpBase)} + ${prevM}월 ${won(mpPrev)} + ${curM}월 ${won(mpCur)}<br>` +
+        `합계 <span class="sumbig" style="color:var(--mpc)">${won(mp)}</span>`
+      : `합계 <span class="sumbig" style="color:var(--mpc)">${won(mp)}</span>`;
   const ladder = S.grades.filter(g => n(g.min) > 0)
     .sort((a,b) => n(b.min) - n(a.min));           // 높은 기준부터
   let curG = null;
@@ -543,9 +609,10 @@ function render() {
   /* --- MDRT: 트랙별 전산+전월+당월 합산, 하나만 충족하면 인정 --- */
   const nsc = n(S.nsc) + n(S.nscPrev) + n(S.nscCur);
   const agi = n(S.agi) + n(S.agiPrev) + n(S.agiCur);
-  document.getElementById("mdrtEcho").textContent =
+  document.getElementById("mdrtEcho").innerHTML =
     nsc > 0 || agi > 0
-      ? "합계 기준 · NSC " + won(nsc) + " · AGI " + won(agi)
+      ? `NSC 합계 <span class="sumbig" style="color:var(--mdrt)">${won(nsc)}</span>` +
+        ` · AGI 합계 <span class="sumbig" style="color:var(--mdrt)">${won(agi)}</span>`
       : "전산 반영 전 월은 아래 칸에 직접 넣어 합산하세요";
   const RANK = { MDRT: 1, COT: 2, TOT: 3 };
   const tracks = [
@@ -728,6 +795,7 @@ function buildPb2() {
       S.vints[i].cur = commaize(uEl); save(); render(); });
   });
 }
+rollover();
 for (const [id,k] of MAIN_INPUTS) {
   const el = document.getElementById(id);
   el.value = comma(S[k]);
