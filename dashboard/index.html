@@ -171,7 +171,7 @@ details.std > summary:hover { color: var(--ink-2); }
       <div class="hd"><b style="color:var(--mpc)">MPC</b><span>환산수수료 + 보너스 포인트</span></div>
       <div class="inrow">
         <label for="inMpc">현재 포인트 (회사 전산 조회값)</label>
-        <input type="number" id="inMpc" min="0" step="1" placeholder="0" style="color:var(--ink)">
+        <input type="text" inputmode="numeric" autocomplete="off" id="inMpc" placeholder="0" style="color:var(--ink)">
         <div class="hint" id="mpcEcho">—</div>
       </div>
       <div class="now">
@@ -193,11 +193,11 @@ details.std > summary:hover { color: var(--ink-2); }
         <div class="in2">
           <div>
             <label for="inNsc">NSC(FYC) 실적</label>
-            <input type="number" id="inNsc" min="0" step="1" placeholder="0" style="color:var(--ink)">
+            <input type="text" inputmode="numeric" autocomplete="off" id="inNsc" placeholder="0" style="color:var(--ink)">
           </div>
           <div>
             <label for="inAgi">AGI(연간총수입)</label>
-            <input type="number" id="inAgi" min="0" step="1" placeholder="0" style="color:var(--ink)">
+            <input type="text" inputmode="numeric" autocomplete="off" id="inAgi" placeholder="0" style="color:var(--ink)">
           </div>
         </div>
         <div class="hint" id="mdrtEcho">—</div>
@@ -222,11 +222,11 @@ details.std > summary:hover { color: var(--ink-2); }
         <div class="in2">
           <div>
             <label for="inPb2T">목표</label>
-            <input type="number" id="inPb2T" min="0" step="1" placeholder="0" style="color:var(--ink)">
+            <input type="text" inputmode="numeric" autocomplete="off" id="inPb2T" placeholder="0" style="color:var(--ink)">
           </div>
           <div>
             <label for="inPb2">현재 실적</label>
-            <input type="number" id="inPb2" min="0" step="1" placeholder="0" style="color:var(--ink)">
+            <input type="text" inputmode="numeric" autocomplete="off" id="inPb2" placeholder="0" style="color:var(--ink)">
           </div>
         </div>
         <div class="hint" id="pb2Echo">—</div>
@@ -256,15 +256,15 @@ details.std > summary:hover { color: var(--ink-2); }
       </div>
       <h3 style="color:var(--mdrt)">MDRT 기준 (원) — NSC(FYC)</h3>
       <div class="stdgrid">
-        <label><span>MDRT</span><input type="number" id="stNscM" min="0" step="1"></label>
-        <label><span>COT</span><input type="number" id="stNscC" min="0" step="1"></label>
-        <label><span>TOT</span><input type="number" id="stNscT" min="0" step="1"></label>
+        <label><span>MDRT</span><input type="text" inputmode="numeric" autocomplete="off" id="stNscM"></label>
+        <label><span>COT</span><input type="text" inputmode="numeric" autocomplete="off" id="stNscC"></label>
+        <label><span>TOT</span><input type="text" inputmode="numeric" autocomplete="off" id="stNscT"></label>
       </div>
       <h3 style="color:var(--mdrt)">MDRT 기준 (원) — AGI</h3>
       <div class="stdgrid">
-        <label><span>MDRT</span><input type="number" id="stAgiM" min="0" step="1"></label>
-        <label><span>COT</span><input type="number" id="stAgiC" min="0" step="1"></label>
-        <label><span>TOT</span><input type="number" id="stAgiT" min="0" step="1"></label>
+        <label><span>MDRT</span><input type="text" inputmode="numeric" autocomplete="off" id="stAgiM"></label>
+        <label><span>COT</span><input type="text" inputmode="numeric" autocomplete="off" id="stAgiC"></label>
+        <label><span>TOT</span><input type="text" inputmode="numeric" autocomplete="off" id="stAgiT"></label>
       </div>
     </div>
   </details>
@@ -310,10 +310,28 @@ function load() {
 }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} };
 
+/* 입력 중 쉼표 자동 표시 — 커서 위치 유지 */
+const comma = v => (v == null || v === "" ? "" : Number(v).toLocaleString("en-US"));
+function commaize(el) {
+  const raw = el.value;
+  const caret = el.selectionStart ?? raw.length;
+  const digitsBefore = raw.slice(0, caret).replace(/\D/g, "").length;
+  const digits = raw.replace(/\D/g, "");
+  el.value = digits === "" ? "" : Number(digits).toLocaleString("en-US");
+  let pos = 0, seen = 0;
+  while (pos < el.value.length && seen < digitsBefore) {
+    if (/\d/.test(el.value[pos])) seen++;
+    pos++;
+  }
+  try { el.setSelectionRange(pos, pos); } catch (e) {}
+  return digits === "" ? null : Number(digits);
+}
+
 /* ============================================================
    유틸
    ============================================================ */
-const n  = v => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
+const n  = v => { const x = Number(String(v ?? "").replace(/,/g, ""));
+  return Number.isFinite(x) ? x : 0; };
 const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 function won(v) {
@@ -422,22 +440,24 @@ function buildStd() {
     <div class="gr-row">
       <input type="text" data-g="${i}" data-f="name" value="${esc(g.name)}"
         aria-label="등급명">
-      <input type="number" data-g="${i}" data-f="min" min="0" step="1"
-        value="${n(g.min)||""}" aria-label="기준액">
+      <input type="text" inputmode="numeric" autocomplete="off" data-g="${i}"
+        data-f="min" value="${comma(n(g.min)||null)}" aria-label="기준액">
     </div>`).join("");
   document.querySelectorAll("#gradeEdit input").forEach(inp => {
     inp.addEventListener("input", () => {
       const g = S.grades[+inp.dataset.g];
-      g[inp.dataset.f] = inp.dataset.f === "name" ? inp.value : n(inp.value);
+      g[inp.dataset.f] = inp.dataset.f === "name" ? inp.value : n(commaize(inp));
       save(); render();
     });
   });
-  for (const [id,k] of [["stRet","retMin"],
-                        ["stNscM","nscM"],["stNscC","nscC"],["stNscT","nscT"],
+  { const el = document.getElementById("stRet");
+    el.value = S.retMin ?? "";
+    el.addEventListener("input", () => { S.retMin = n(el.value); save(); render(); }); }
+  for (const [id,k] of [["stNscM","nscM"],["stNscC","nscC"],["stNscT","nscT"],
                         ["stAgiM","agiM"],["stAgiC","agiC"],["stAgiT","agiT"]]) {
     const el = document.getElementById(id);
-    el.value = S[k] ?? "";
-    el.addEventListener("input", () => { S[k] = n(el.value); save(); render(); });
+    el.value = comma(S[k]);
+    el.addEventListener("input", () => { S[k] = n(commaize(el)); save(); render(); });
   }
 }
 
@@ -448,9 +468,9 @@ const MAIN_INPUTS = [["inMpc","mpc"],["inNsc","nsc"],["inAgi","agi"],
                      ["inPb2","pb2"],["inPb2T","pb2T"]];
 for (const [id,k] of MAIN_INPUTS) {
   const el = document.getElementById(id);
-  el.value = S[k] ?? "";
+  el.value = comma(S[k]);
   el.addEventListener("input", () => {
-    S[k] = el.value === "" ? null : n(el.value);
+    S[k] = commaize(el);
     save(); render();
   });
 }
@@ -458,7 +478,7 @@ document.getElementById("btnReset").addEventListener("click", () => {
   if (!confirm("입력값과 기준값을 모두 지웁니다. 계속할까요?")) return;
   localStorage.removeItem(KEY); S = load();
   for (const [id,k] of MAIN_INPUTS)
-    document.getElementById(id).value = S[k] ?? "";
+    document.getElementById(id).value = comma(S[k]);
   buildStd(); render();
 });
 
