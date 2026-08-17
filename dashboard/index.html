@@ -555,7 +555,7 @@ function render() {
   /* 1월 타임라인 — 입력된 연도에서 지급 연도를 도출 */
   const valid = vts.filter(v => v.y != null);
   const janYears = [...new Set(valid.flatMap(v =>
-    PB2_PAY.map(([off]) => v.y + off)))].sort((a, b) => a - b);
+    PB2_PAY.map(([off]) => v.y + off)))].sort((a, b) => a - b).slice(0, 4);
   const nextJan = janYears.find(jy => new Date(jy, 1, 1) > today) ?? null;
   document.getElementById("jans").innerHTML = janYears.length ? janYears.map(jy => {
     const slots = [];
