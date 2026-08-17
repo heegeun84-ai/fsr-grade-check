@@ -140,6 +140,10 @@ body {
 .vint input::placeholder { color: var(--ink-3); font-weight: 400; font-size: 13.5px; }
 .vint .vcalc { font-size: 13px; color: var(--ink-2); margin-top: 8px;
   font-variant-numeric: tabular-nums; }
+.vint .vhold { align-self: end; font-size: 12.5px; color: var(--ink-3);
+  padding-bottom: 10px; font-variant-numeric: tabular-nums; }
+.vint .vhold b { font-family: var(--fd); }
+.vint .vhold b.cut { color: var(--pb2); }
 .vint .vcalc b { font-family: var(--fd); color: var(--pb2); font-size: 14.5px; }
 
 /* 매년 1월 지급 타임라인 */
@@ -279,15 +283,16 @@ details.std > summary:hover { color: var(--ink-2); }
       <div id="pb2Vints"></div>
       <div class="now">
         <div>
-          <div class="k">총 책정액 <span class="s">(감액 전)</span></div>
+          <div class="k">총 책정액 <span class="s">(유지SC 감액 반영)</span></div>
           <div class="v" id="pb2Total" style="color:var(--pb2)">—</div>
         </div>
       </div>
-      <div class="foot-note">연도 칸을 고치면 아래 1월 지급 일정도 함께
-        움직입니다. 올해·미래 연도는 <b>예상치</b>로 입력하세요 (2027년을 넣으면
-        2029년 1월 예상이 완성됩니다). 유지 SC는 반송·철회 제외, 2회 연체 제외
-        기준. 유지SC 100·150백만 보장(6·9회)과 300백만 합산(+3회)은 자동 반영 —
-        전문직 1.5배·FSR 소개 가산은 횟수에 직접 반영해 입력하세요.</div>
+      <div class="foot-note"><b>확정 SC</b>는 책정 시점 유지SC(반송·철회 제외,
+        2회 연체 제외), <b>현 유지SC</b>는 지금 시점에 정상 유지 중인 SC입니다.
+        현 유지SC가 확정 구간보다 낮으면 일정액 × SC유지율(현 유지SC ÷ 구간)로
+        감액해 계산합니다 — 비워두면 감액 없음. 보장(6·9회)·합산(+3회)은 확정 SC
+        기준 자동 반영, 전문직 1.5배·FSR 소개 가산은 횟수에 직접 반영해
+        입력하세요. 연도 칸을 고치면 1월 지급 일정도 함께 움직입니다.</div>
     </div>
 
   </div>
@@ -299,8 +304,8 @@ details.std > summary:hover { color: var(--ink-2); }
       <span>책정연도별 +13차월 20% → +25차월 30% → +37차월 50% 분할 지급</span>
     </div>
     <div class="jans" id="jans"></div>
-    <p class="jnote">지급 시점 유지SC가 책정 구간보다 낮아지면 일정액 × SC 유지율로
-      감액될 수 있습니다 (위 금액은 감액 전 기준).</p>
+    <p class="jnote">각 연도 카드의 현 유지SC 입력을 반영한 금액입니다.
+      유지SC는 지급 시점마다 다시 평가되므로 실제 지급액은 달라질 수 있습니다.</p>
   </div>
 
   <!-- ==================== 기준값 수정 ==================== -->
@@ -355,7 +360,7 @@ const DEF_VINT_YEARS = [2024, 2025, 2026, 2027];
 /* 회사 전산 달성 Grade 표 (천원 단위 절사 → 원 환산) */
 const DEFAULTS = () => ({
   mpc: null, nsc: null, agi: null,
-  vints: DEF_VINT_YEARS.map(y => ({ y, sc: null, cnt: null })),
+  vints: DEF_VINT_YEARS.map(y => ({ y, sc: null, cnt: null, cur: null })),
   grades: DEF_GRADES.map(g => ({ ...g })),
   retMin: 89,
   nscM: 75194000,  nscC: 225581000, nscT: 451163000,
@@ -374,7 +379,8 @@ function load() {
     if (Array.isArray(p.vints) && p.vints.length) {
       d.vints = p.vints.slice(0, 8).map(v => ({
         y: v && Number.isFinite(Number(v.y)) ? Number(v.y) : null,
-        sc: v ? v.sc ?? null : null, cnt: v ? v.cnt ?? null : null }));
+        sc: v ? v.sc ?? null : null, cnt: v ? v.cnt ?? null : null,
+        cur: v ? v.cur ?? null : null }));
     } else {
       /* 이전 버전(sc2024 형태) 데이터 이전 */
       d.vints.forEach(v => {
@@ -425,9 +431,9 @@ const pc = p => !Number.isFinite(p) ? "—"
 /* ============================================================
    렌더
    ============================================================ */
-function pb2Base(sc) {
-  for (const [t, a] of PB2_AMT) if (sc >= t * M) return a * M;
-  return 0;
+function pb2Bracket(sc) {
+  for (const [t, a] of PB2_AMT) if (sc >= t * M) return { thr: t * M, amt: a * M };
+  return { thr: 0, amt: 0 };
 }
 function pb2Eff(sc, raw) {
   let e = raw; const steps = [];
@@ -444,12 +450,14 @@ function pb2Vintages() {
   return S.vints.map((v, i) => {
     const y = Number(v.y);
     const ok = Number.isFinite(y) && y >= 2024 && y < 2100;
-    const sc = n(v.sc), raw = n(v.cnt);
-    const base = pb2Base(sc);
+    const sc = n(v.sc), raw = n(v.cnt), cur = n(v.cur);
+    const { thr, amt: base } = pb2Bracket(sc);
     const { e, steps } = pb2Eff(sc, raw);
     const rate = pb2Rate(e);
-    return { i, y: ok ? y : null, sc, raw, eff: e, steps, base, rate,
-             total: ok ? base * rate / 100 : 0 };
+    /* d항: 지급 시점 유지SC < 책정 구간이면 일정액 × (현 유지SC ÷ 구간) */
+    const hold = cur > 0 && thr > 0 && cur < thr ? cur / thr : 1;
+    return { i, y: ok ? y : null, sc, raw, cur, eff: e, steps, base, thr,
+             hold, rate, total: ok ? base * hold * rate / 100 : 0 };
   });
 }
 
@@ -538,11 +546,21 @@ function render() {
     }
     if (note) note.textContent = (v.y + 1) + ".1 책정" +
       (v.y > nowY ? " · 예상" : v.y === nowY ? " · 진행 중" : "");
-    if (v.sc <= 0 && v.raw <= 0) { el.innerHTML = "유지 SC와 횟수를 입력하세요"; return; }
-    if (v.base <= 0) { el.innerHTML = "유지SC 2,000만원 미만 — 일정액 구간 밖"; return; }
+    const hEl = document.getElementById("vh" + v.i);
+    if (hEl) {
+      if (v.cur > 0 && v.thr > 0) {
+        hEl.innerHTML = v.hold < 1
+          ? `SC 유지율 <b class="cut">${(v.hold * 100).toFixed(1).replace(/\.0$/, "")}%</b><br>구간 ${won(v.thr)} 미달 — 감액`
+          : `SC 유지율 <b>100%</b><br>구간 ${won(v.thr)} 이상 — 감액 없음`;
+      } else hEl.innerHTML = "";
+    }
+    if (v.sc <= 0 && v.raw <= 0) { el.innerHTML = "확정 SC와 횟수를 입력하세요"; return; }
+    if (v.base <= 0) { el.innerHTML = "확정 SC 2,000만원 미만 — 일정액 구간 밖"; return; }
     if (v.rate <= 0) { el.innerHTML =
       `일정액 ${won(v.base)} × <b style="color:var(--ink-3)">0%</b> — PB1 3회 미만`; return; }
-    el.innerHTML = `일정액 ${won(v.base)} × ${v.rate}%` +
+    el.innerHTML = `일정액 ${won(v.base)}` +
+      (v.hold < 1 ? ` × 유지율 ${(v.hold * 100).toFixed(1).replace(/\.0$/, "")}%` : "") +
+      ` × ${v.rate}%` +
       (v.eff !== v.raw ? ` <span style="color:var(--ink-3)">(${v.raw}→${v.eff}회 · ${
         v.steps.join(", ")})</span>` : "") +
       ` = <b>${won(v.total)}</b>`;
@@ -630,12 +648,18 @@ function buildPb2() {
         <span class="vnote" id="vn${i}"></span>
       </div>
       <div class="in2">
-        <div><label for="vsc${i}">유지 SC</label>
+        <div><label for="vsc${i}">확정 SC (책정 기준)</label>
           <input type="text" inputmode="numeric" autocomplete="off"
             id="vsc${i}" placeholder="0"></div>
         <div><label for="vcnt${i}">PB1 횟수</label>
           <input type="text" inputmode="numeric" autocomplete="off"
             id="vcnt${i}" placeholder="0"></div>
+      </div>
+      <div class="in2" style="margin-top:10px">
+        <div><label for="vcur${i}">현 유지SC (지급 시점)</label>
+          <input type="text" inputmode="numeric" autocomplete="off"
+            id="vcur${i}" placeholder="미입력 시 감액 없음"></div>
+        <div class="vhold" id="vh${i}"></div>
       </div>
       <div class="vcalc" id="vvc${i}">—</div>
     </div>`).join("");
@@ -655,6 +679,10 @@ function buildPb2() {
     cEl.value = comma(v.cnt);
     cEl.addEventListener("input", () => {
       S.vints[i].cnt = commaize(cEl); save(); render(); });
+    const uEl = document.getElementById("vcur" + i);
+    uEl.value = comma(v.cur);
+    uEl.addEventListener("input", () => {
+      S.vints[i].cur = commaize(uEl); save(); render(); });
   });
 }
 for (const [id,k] of MAIN_INPUTS) {
