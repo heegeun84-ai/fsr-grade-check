@@ -81,6 +81,8 @@ body {
 .inrow input::placeholder { color: var(--ink-3); font-weight: 400; font-size: 14px; }
 .inrow .hint { font-size: 13px; color: var(--ink-3); margin-top: 5px;
   text-align: right; }
+.inrow label.sub2 { margin-top: 10px; }
+.inrow input.sub { font-size: 16px; padding: 8px 11px; }
 .in2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 /* 현재 상태 한 줄 */
@@ -232,8 +234,16 @@ details.std > summary:hover { color: var(--ink-2); }
       <div class="strip" style="background:var(--mpc)"></div>
       <div class="hd"><b style="color:var(--mpc)">MPC</b><span>환산수수료 + 보너스 포인트</span></div>
       <div class="inrow">
-        <label for="inMpc">현재 포인트 (회사 전산 조회값)</label>
+        <label for="inMpc">전산 확인 포인트 (마감 반영분)</label>
         <input type="text" inputmode="numeric" autocomplete="off" id="inMpc" placeholder="0" style="color:var(--ink)">
+        <div class="in2" style="margin-top:10px">
+          <div><label class="sub2" for="inMpcPrev"><span class="mPrev">전월</span> 마감 실적</label>
+            <input type="text" inputmode="numeric" autocomplete="off" class="sub"
+              id="inMpcPrev" placeholder="0" style="color:var(--ink)"></div>
+          <div><label class="sub2" for="inMpcCur"><span class="mCur">이번 달</span> 현재까지</label>
+            <input type="text" inputmode="numeric" autocomplete="off" class="sub"
+              id="inMpcCur" placeholder="0" style="color:var(--ink)"></div>
+        </div>
         <div class="hint" id="mpcEcho">—</div>
       </div>
       <div class="now">
@@ -243,8 +253,10 @@ details.std > summary:hover { color: var(--ink-2); }
         </div>
       </div>
       <div class="rows" id="mpcRows"></div>
-      <div class="foot-note">순위 컷과 유지율(2~13회차 통산확정 SC유지율
-        <span id="mpcRetMin">89</span>% 이상)은 별도로 충족해야 최종 확정됩니다.</div>
+      <div class="foot-note">전산에는 마감 반영분까지만 잡히므로, 아직 반영되지
+        않은 달은 위 두 칸에 직접 넣으면 합산됩니다. 순위 컷과 유지율(2~13회차
+        통산확정 SC유지율 <span id="mpcRetMin">89</span>% 이상)은 별도로 충족해야
+        최종 확정됩니다.</div>
     </div>
 
     <!-- ==================== MDRT ==================== -->
@@ -254,12 +266,24 @@ details.std > summary:hover { color: var(--ink-2); }
       <div class="inrow">
         <div class="in2">
           <div>
-            <label for="inNsc">NSC(FYC) 실적</label>
+            <label for="inNsc">NSC(FYC) — 전산 확인</label>
             <input type="text" inputmode="numeric" autocomplete="off" id="inNsc" placeholder="0" style="color:var(--ink)">
+            <label class="sub2" for="inNscPrev"><span class="mPrev">전월</span> 마감</label>
+            <input type="text" inputmode="numeric" autocomplete="off" class="sub"
+              id="inNscPrev" placeholder="0" style="color:var(--ink)">
+            <label class="sub2" for="inNscCur"><span class="mCur">이번 달</span> 현재까지</label>
+            <input type="text" inputmode="numeric" autocomplete="off" class="sub"
+              id="inNscCur" placeholder="0" style="color:var(--ink)">
           </div>
           <div>
-            <label for="inAgi">AGI(연간총수입)</label>
+            <label for="inAgi">AGI — 전산 확인</label>
             <input type="text" inputmode="numeric" autocomplete="off" id="inAgi" placeholder="0" style="color:var(--ink)">
+            <label class="sub2" for="inAgiPrev"><span class="mPrev">전월</span> 마감</label>
+            <input type="text" inputmode="numeric" autocomplete="off" class="sub"
+              id="inAgiPrev" placeholder="0" style="color:var(--ink)">
+            <label class="sub2" for="inAgiCur"><span class="mCur">이번 달</span> 현재까지</label>
+            <input type="text" inputmode="numeric" autocomplete="off" class="sub"
+              id="inAgiCur" placeholder="0" style="color:var(--ink)">
           </div>
         </div>
         <div class="hint" id="mdrtEcho">—</div>
@@ -271,9 +295,11 @@ details.std > summary:hover { color: var(--ink-2); }
         </div>
       </div>
       <div class="rows" id="mdrtRows"></div>
-      <div class="foot-note">기준은 회사 전산 달성 Grade 표(천원 단위 절사 → 원 환산)입니다.
-        두 기준 중 하나만 충족하면 해당 레벨이 인정됩니다.
-        2027년 기준 발표 시 아래 기준값 수정에서 교체하세요.</div>
+      <div class="foot-note">전산 반영 시차가 트랙마다 다르니(예: NSC는 6월
+        마감·AGI는 7월 마감까지 확인) 미반영 월만 채우면 됩니다. 기준은 회사 전산
+        달성 Grade 표(천원 단위 절사 → 원 환산)이며 두 기준 중 하나만 충족하면
+        해당 레벨이 인정됩니다. 2027년 기준 발표 시 아래 기준값 수정에서
+        교체하세요.</div>
     </div>
 
     <!-- ==================== PB2 ==================== -->
@@ -359,7 +385,9 @@ const DEF_VINT_YEARS = [2024, 2025, 2026, 2027];
 
 /* 회사 전산 달성 Grade 표 (천원 단위 절사 → 원 환산) */
 const DEFAULTS = () => ({
-  mpc: null, nsc: null, agi: null,
+  mpc: null, mpcPrev: null, mpcCur: null,
+  nsc: null, nscPrev: null, nscCur: null,
+  agi: null, agiPrev: null, agiCur: null,
   vints: DEF_VINT_YEARS.map(y => ({ y, sc: null, cnt: null, cur: null })),
   grades: DEF_GRADES.map(g => ({ ...g })),
   retMin: 89,
@@ -372,7 +400,8 @@ function load() {
   try {
     const raw = localStorage.getItem(KEY); if (!raw) return DEFAULTS();
     const d = DEFAULTS(), p = JSON.parse(raw);
-    for (const k of ["mpc","nsc","agi","retMin",
+    for (const k of ["mpc","mpcPrev","mpcCur","nsc","nscPrev","nscCur",
+                     "agi","agiPrev","agiCur","retMin",
                      "nscM","nscC","nscT","agiM","agiC","agiT"])
       if (p[k] !== undefined) d[k] = p[k];
     if (Array.isArray(p.grades) && p.grades.length) d.grades = p.grades;
@@ -484,10 +513,20 @@ function render() {
     today.toLocaleDateString("ko-KR") + " 기준 · 연말까지 " +
     leftMo + "개월 (" + days + "일)";
 
-  /* --- MPC --- */
-  const mp = n(S.mpc);
+  /* --- 접속일 기준 전월·당월 라벨 --- */
+  const prevM = new Date(today.getFullYear(), today.getMonth() - 1, 1).getMonth() + 1;
+  const curM = today.getMonth() + 1;
+  document.querySelectorAll(".mPrev").forEach(e => e.textContent = prevM + "월");
+  document.querySelectorAll(".mCur").forEach(e => e.textContent = curM + "월");
+
+  /* --- MPC: 전산 확인 + 전월 마감 + 당월 현재 합산 --- */
+  const mpBase = n(S.mpc), mpPrev = n(S.mpcPrev), mpCur = n(S.mpcCur);
+  const mp = mpBase + mpPrev + mpCur;
   document.getElementById("mpcEcho").textContent =
-    mp > 0 ? won(mp) : "포인트를 입력하세요";
+    mp <= 0 ? "포인트를 입력하세요"
+    : (mpPrev > 0 || mpCur > 0)
+      ? `전산 ${won(mpBase)} + ${prevM}월 ${won(mpPrev)} + ${curM}월 ${won(mpCur)} = 합계 ${won(mp)}`
+      : won(mp);
   const ladder = S.grades.filter(g => n(g.min) > 0)
     .sort((a,b) => n(b.min) - n(a.min));           // 높은 기준부터
   let curG = null;
@@ -501,12 +540,13 @@ function render() {
   document.getElementById("mpcRows").innerHTML = ladder.map(g =>
     rowHTML(g.name, n(g.min), mp, "var(--mpc)", n(g.min) === nextMin)).join("");
 
-  /* --- MDRT: NSC·AGI 두 트랙, 하나만 충족하면 인정 --- */
-  const nsc = n(S.nsc), agi = n(S.agi);
+  /* --- MDRT: 트랙별 전산+전월+당월 합산, 하나만 충족하면 인정 --- */
+  const nsc = n(S.nsc) + n(S.nscPrev) + n(S.nscCur);
+  const agi = n(S.agi) + n(S.agiPrev) + n(S.agiCur);
   document.getElementById("mdrtEcho").textContent =
     nsc > 0 || agi > 0
-      ? "NSC " + won(nsc) + " · AGI " + won(agi)
-      : "둘 중 관리하는 기준의 실적을 입력하세요";
+      ? "합계 기준 · NSC " + won(nsc) + " · AGI " + won(agi)
+      : "전산 반영 전 월은 아래 칸에 직접 넣어 합산하세요";
   const RANK = { MDRT: 1, COT: 2, TOT: 3 };
   const tracks = [
     { key: "NSC(FYC)", cur: nsc,
@@ -633,7 +673,10 @@ function buildStd() {
 /* ============================================================
    바인딩
    ============================================================ */
-const MAIN_INPUTS = [["inMpc","mpc"],["inNsc","nsc"],["inAgi","agi"]];
+const MAIN_INPUTS = [
+  ["inMpc","mpc"],["inMpcPrev","mpcPrev"],["inMpcCur","mpcCur"],
+  ["inNsc","nsc"],["inNscPrev","nscPrev"],["inNscCur","nscCur"],
+  ["inAgi","agi"],["inAgiPrev","agiPrev"],["inAgiCur","agiCur"]];
 
 /* PB2 연도별 입력 블록 생성 + 바인딩 (연도도 입력값) */
 function buildPb2() {
