@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Design tokens — light is the base; dark redefines the same roles.
+   Chart colors follow the validated reference palette (dataviz method):
+   categorical slot 1 (blue) as the single accent/series hue, status palette
+   reserved for workflow states, chrome/ink tokens for everything textual.
+--------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  --page: #f9f9f7; /* page plane */
+  --surface-1: #fcfcfb; /* card / chart surface */
+  --ink: #0b0b0b; /* primary text */
+  --ink-2: #52514e; /* secondary text */
+  --ink-muted: #898781; /* axis / muted labels */
+  --grid-line: #e1e0d9; /* hairline gridline */
+  --axis-line: #c3c2b7; /* baseline / axis */
+  --hairline: rgba(11, 11, 11, 0.1); /* border ring */
+
+  --accent: #2a78d6; /* categorical slot 1 (blue 450) */
+  --accent-strong: #1c5cab; /* blue 550 — hover/pressed */
+  --accent-soft: #cde2fb; /* blue 100 — meter track, tints */
+
+  --status-good: #0ca30c;
+  --status-good-text: #006300;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+}
+
+/* 다크 토큰: OS 설정(미디어 쿼리)과 명시적 data-theme 스탬프 모두 지원.
+   data-theme="light"가 지정되면 OS가 다크여도 라이트를 유지한다. */
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+
+    --page: #0d0d0d;
+    --surface-1: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-muted: #898781;
+    --grid-line: #2c2c2a;
+    --axis-line: #383835;
+    --hairline: rgba(255, 255, 255, 0.1);
+
+    --accent: #3987e5; /* dark-mode step of the same blue */
+    --accent-strong: #6da7ec;
+    --accent-soft: #16324f;
+
+    --status-good-text: #0ca30c;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page: #0d0d0d;
+  --surface-1: #1a1a19;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --ink-muted: #898781;
+  --grid-line: #2c2c2a;
+  --axis-line: #383835;
+  --hairline: rgba(255, 255, 255, 0.1);
+
+  --accent: #3987e5;
+  --accent-strong: #6da7ec;
+  --accent-soft: #16324f;
+
+  --status-good-text: #0ca30c;
+}
+
+@theme inline {
+  --font-sans: "Noto Sans KR", system-ui, "Apple SD Gothic Neo", "Malgun Gothic",
+    sans-serif;
+
+  --color-page: var(--page);
+  --color-surface: var(--surface-1);
+  --color-ink: var(--ink);
+  --color-ink2: var(--ink-2);
+  --color-mutedink: var(--ink-muted);
+  --color-gridline: var(--grid-line);
+  --color-axisline: var(--axis-line);
+  --color-hairline: var(--hairline);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--status-good);
+  --color-goodtext: var(--status-good-text);
+  --color-warning: var(--status-warning);
+  --color-serious: var(--status-serious);
+  --color-critical: var(--status-critical);
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Chart marks (SVG) ------------------------------------------------------- */
+.viz-bar {
+  fill: var(--accent);
+  transition: fill 120ms ease;
+}
+.viz-bar--hover {
+  fill: color-mix(in srgb, var(--accent) 78%, var(--surface-1));
+}
+.viz-hit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Toggle switch ----------------------------------------------------------- */
+.switch {
+  position: relative;
+  display: inline-flex;
+  width: 34px;
+  height: 20px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--axis-line);
+  transition: background 150ms ease;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--surface-1);
+  transition: transform 150ms ease;
+}
+input:checked + .switch {
+  background: var(--accent);
+}
+input:checked + .switch::after {
+  transform: translateX(14px);
+}
+input:focus-visible + .switch {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
