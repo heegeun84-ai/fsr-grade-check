@@ -63,14 +63,6 @@ body {
 .head button:hover { color: var(--ink); background: var(--panel-2); }
 
 /* ---------- 카드 3장 ---------- */
-.rollnote { display: flex; align-items: flex-start; gap: 10px;
-  margin: 0 0 16px; padding: 12px 16px; border-radius: 12px;
-  border: 1px solid rgba(232,181,62,.45); background: rgba(232,181,62,.08);
-  font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
-.rollnote b { color: var(--pb2); }
-.rollnote button { margin-left: auto; flex: none; background: none; border: none;
-  color: var(--ink-3); cursor: pointer; font-size: 17px; padding: 0 2px; }
-.rollnote button:hover { color: var(--ink); }
 .cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
 @media (max-width: 1000px) { .cards { grid-template-columns: 1fr; } }
 .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 16px;
@@ -237,12 +229,6 @@ details.std > summary:hover { color: var(--ink-2); }
     </div>
     <div class="sp"></div>
     <button id="btnReset" type="button">전체 지우기</button>
-  </div>
-
-  <div class="rollnote" id="rollNote" hidden>
-    <span>📅</span>
-    <span id="rollMsg"></span>
-    <button type="button" id="rollClose" aria-label="닫기">×</button>
   </div>
 
   <div class="cards">
@@ -454,10 +440,8 @@ function rollover() {
   }
   const diff = cur - S.stamp;
   if (diff === 0) return;
-  let moved = 0;
   const roll = (kb, kp, kc) => {
     const b = n(S[kb]), p = n(S[kp]), c = n(S[kc]);
-    moved += p + (diff >= 2 ? c : 0);
     if (diff === 1) {
       S[kb] = b + p > 0 ? b + p : null;
       S[kp] = c > 0 ? c : null;
@@ -471,18 +455,6 @@ function rollover() {
   roll("nsc", "nscPrev", "nscCur");
   roll("agi", "agiPrev", "agiCur");
   S.stamp = cur; save();
-  if (moved > 0) {
-    const el = document.getElementById("rollNote");
-    document.getElementById("rollMsg").innerHTML =
-      `달이 바뀌어 미반영 월 입력값을 <b>자동 이월</b>했습니다` +
-      (diff === 1
-        ? " — 전월 마감분은 전산 확인 칸에 합산하고, 지난달 현재까지 실적은 마감 칸으로 옮겼습니다."
-        : " — 밀린 월 입력값을 모두 전산 확인 칸에 합산했습니다.") +
-      " 전산 조회값과 다르면 바로잡아 주세요.";
-    el.hidden = false;
-    document.getElementById("rollClose").addEventListener("click",
-      () => { el.hidden = true; });
-  }
 }
 
 /* 입력 중 쉼표 자동 표시 — 커서 위치 유지 */
